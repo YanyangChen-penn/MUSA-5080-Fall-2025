@@ -107,6 +107,13 @@ head(income_concept)
 ### 0.4 Search for Age Variables
 
 **Your Task:** Find median age variables.
+```{r}
+age_core <- acs_vars_2022 %>%
+  filter(concept == "Median Age by Sex") %>%
+  select(name, label, concept)
+age_core
+
+```
 
 \[write the code below - first add a code chunk\]
 
@@ -253,7 +260,7 @@ describe what you see.
 # Create histogram of median income
 ggplot(county_data) +
   aes(x = median_incomeE) +
-  geom_histogram(bins = 15, fill = "steelblue", alpha = 0.7) +
+  geom_histogram(bins = 10, fill = "steelblue", alpha = 0.8) +
   labs(
     title = "Distribution of Median Household Income",
     x = "Median Household Income ($)",
@@ -300,6 +307,67 @@ income_outliers
 and identify outliers.
 
 **Requirements:**
+```{r}
+library(ggplot2)
+library(dplyr)
+library(scales)
+
+# Histogram of total population
+ggplot(county_data) +
+  aes(x = total_popE) +
+  geom_histogram(bins = 20, fill = "darkgreen", alpha = 0.7) +
+  labs(
+    title = "Population Distribution of Pennsylvania Counties",
+    x = "Total Population",
+    y = "Number of Counties"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(labels = comma)
+
+# Box plot to identify population outliers
+ggplot(county_data) +
+  aes(y = total_popE) +
+  geom_boxplot(fill = "purple", width = 0.5, alpha = 0.7) +
+  labs(
+    title = "Population Distribution with Outliers",
+    y = "Total Population"
+  ) +
+  theme_minimal() +
+  scale_y_continuous(labels = comma)
+
+# Identify outlier counties using IQR
+pop_outliers <- county_data %>%
+  mutate(
+    Q1 = quantile(total_popE, 0.25, na.rm = TRUE),
+    Q3 = quantile(total_popE, 0.75, na.rm = TRUE),
+    IQR = Q3 - Q1,
+    outlier = total_popE < (Q1 - 1.5 * IQR) | total_popE > (Q3 + 1.5 * IQR)
+  ) %>%
+  filter(outlier) %>%
+  select(county_name, total_popE)
+
+print("Outlier counties:")
+pop_outliers
+
+# Find top 3 and bottom 3 counties by population
+most_populous <- county_data %>%
+  arrange(desc(total_popE)) %>%
+  select(county_name, total_popE) %>%
+  head(3)
+
+least_populous <- county_data %>%
+  arrange(total_popE) %>%
+  select(county_name, total_popE) %>%
+  head(3)
+
+print("3 most populous counties:")
+most_populous
+
+print("3 least populous counties:")
+least_populous
+
+```
+
 
 -   Create a histogram of total population (`total_popE`)
 -   Use a different color than the income example (try "darkgreen" or
@@ -396,6 +464,19 @@ income using different visualization techniques.
 -   Use the "dark" theme (`theme_dark()`)
 -   Format the y-axis with dollar signs
 -   Add a title that mentions both variables
+```{r}
+ggplot(county_data) +
+  aes(x = median_ageE, y = median_incomeE) +
+  geom_point(color = "red", alpha = 0.5) +   # 红色点，50%透明
+  geom_smooth(method = "loess", se = TRUE, color = "yellow") +  # LOESS 平滑趋势线
+  theme_dark() +  # 深色主题
+  scale_y_continuous(labels = dollar) +  # Y 轴美元格式
+  labs(
+    title = "Relationship between Median Age and Median Household Income",
+    x = "Median Age (years)",
+    y = "Median Household Income ($)"
+  )
+```
 
 ------------------------------------------------------------------------
 
@@ -469,6 +550,45 @@ population vs age MOE percentage
 using `geom_hline()` with a blue dashed line 
 - Use `theme_classic()`instead of `theme_minimal()` 
 - Create a boxplot comparing age MOE across the three population categories
+```{r}
+# Step 1: Calculate MOE percentage for median age
+county_data <- county_data %>%
+  mutate(age_MOE_pct = (median_ageM / median_ageE) * 100)
+
+# Step 2: Scatter plot - Population vs Age MOE percentage
+ggplot(county_data) +
+  aes(x = total_popE, y = age_MOE_pct) +
+  geom_point(color = "purple", size = 2) +
+  geom_hline(yintercept = 5, color = "blue", linetype = "dashed") +
+  labs(
+    title = "Population vs Age MOE Percentage",
+    x = "Total Population",
+    y = "Median Age MOE (%)"
+  ) +
+  theme_classic() +
+  scale_x_continuous(labels = comma)
+
+# Step 3: Create population categories
+county_data <- county_data %>%
+  mutate(
+    pop_category = case_when(
+      total_popE < 50000 ~ "Small",
+      total_popE >= 50000 & total_popE < 200000 ~ "Medium",
+      total_popE >= 200000 ~ "Large"
+    )
+  )
+
+# Step 4: Boxplot comparing MOE across categories
+ggplot(county_data) +
+  aes(x = pop_category, y = age_MOE_pct, fill = pop_category) +
+  geom_boxplot(alpha = 0.7) +
+  labs(
+    title = "Age MOE Percentage by Population Category",
+    x = "Population Category",
+    y = "Median Age MOE (%)"
+  ) +
+  theme_classic()
+```
 
 ------------------------------------------------------------------------
 
